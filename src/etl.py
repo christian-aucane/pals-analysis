@@ -1,9 +1,6 @@
-from pathlib import Path
-
 import pandas as pd
 
 from db import DataframeToDatabaseLoader
-
 from constants import CSV_PATHS, DB_CONFIG
 
 
