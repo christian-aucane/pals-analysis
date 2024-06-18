@@ -1,81 +1,45 @@
-import pandas as pd
-
-from db import DataframeToDatabaseLoader
-from constants import CSV_PATHS, DB_CONFIG
+from src.db import DatabaseConnexion
+from src.config import DATA_EXTRACTORS, DB_CONFIG
 
 
-def palu_combat_attribute_pipeline(loader):
-    # Extract
-    df = pd.read_csv(CSV_PATHS["combat-attribute"], skiprows=1)
+def extract(table_name):
+    return DATA_EXTRACTORS[table_name]()
 
-    # Transform
-    # TODO : process df
 
-    # Load
-    loader.load(df, "combat-attribute")
+def process_combat_attribute(df):
+    ...
 
-def palu_refresh_level_pipeline(loader):
-    # Extract
-    df = pd.read_csv(CSV_PATHS["refresh-level"], skiprows=4)
+def process_refresh_area(df):
+    ...
 
-    # Transform
-    # TODO : process df
+def process_job_skill(df):
+    ...
 
-    # Load
-    loader.load(df, "refresh-area")
+def process_hiden_attribute(df):
+    ...
 
-def palu_job_skills_pipeline(loader):
-    # Extract
-    df = pd.read_csv(CSV_PATHS["job-skills"], skiprows=1)
+def process_tower_boss_attribute(df):
+    ...
 
-    # Transform
-    # TODO : process df
-
-    # Load
-    loader.load(df, "job-skill")
-
-def palu_hide_attributes_pipeline(loader):
-    # Extract
-    df = pd.read_csv(CSV_PATHS["hiden-attributes"])
-
-    # Transform
-    # TODO : process df
-
-    # Load
-    loader.load(df, "hidden-attribute")
-
-def tower_boss_attribute_comparison_pipeline(loader):
-
-    # Extract
-    df = pd.read_csv(CSV_PATHS["tower-boss-attribute"], index_col="name").T
-
-    # Transform
-    # TODO : process df
-
-    # Load
-    loader.load(df, "tower-boss-attribute")
-
-def ordinary_boss_attribute_comparison_pipeline(loader):
-
-    # Extract
-    df = pd.read_csv(CSV_PATHS["ordinary-boss-attribute"], skiprows=3)
-
-    # Transform
-    # TODO : process df
-
-    # Load
-    loader.load(df, "ordinary-boss-attribute")
-
+def process_ordinary_boss_attribute(df):
+    ...
 
 def pipeline():
-    loader = DataframeToDatabaseLoader(**DB_CONFIG)
+    db = DatabaseConnexion(**DB_CONFIG)
 
-    palu_combat_attribute_pipeline(loader)
-    palu_refresh_level_pipeline(loader)
-    palu_job_skills_pipeline(loader)
-    palu_hide_attributes_pipeline(loader)
-    tower_boss_attribute_comparison_pipeline(loader)
-    ordinary_boss_attribute_comparison_pipeline(loader)
+    def process(table_name, process_func):
+        print(f"Processing {table_name}...")
+        df = extract(table_name)
+        process_func(df)
+        db.load_df_as_table(df, table_name, if_exists="replace")
+        print(f"Table loaded in the database successfully.")
+    
+    process(table_name="combat-attribute", process_func=process_combat_attribute)
+    process(table_name="refresh-area", process_func=process_refresh_area)
+    process(table_name="job-skill", process_func=process_job_skill)
+    process(table_name="hiden-attribute", process_func=process_hiden_attribute)
+    process(table_name="tower-boss-attribute", process_func=process_tower_boss_attribute)
+    process(table_name="ordinary-boss-attribute", process_func=process_ordinary_boss_attribute)
 
 
 if __name__ == "__main__":
