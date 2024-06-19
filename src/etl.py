@@ -117,7 +117,8 @@ def clean_hidden_attribute(db):
     useless_cols = ["IsPal",
                     "Organization",
                     "weapon",
-                    "WeaponEquip"]
+                    "WeaponEquip",
+                    "BPCLass"]
 
     db.delete_columns(table_name="hidden-attribute", column_names=empty_cols + useless_cols)
 
@@ -178,7 +179,7 @@ def clean_ordinary_boss_attribute(db):
     LOGGER.info("Done !\n")
 
 def clean_data(db):
-    transform_combat_attribute(db)
+    clean_combat_attribute(db)
     clean_refresh_area(db)
     clean_job_skill(db)
     clean_hidden_attribute(db)
