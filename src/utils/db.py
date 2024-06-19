@@ -38,7 +38,7 @@ class DatabaseConnexion:
                 connection.execute(text(query), params)
                 connection.commit()
         except OperationalError as e:
-            print(e)
+            LOGGER.error(e)
 
     def delete_columns(self, table_name, column_names):
         with self.engine.connect() as connection:

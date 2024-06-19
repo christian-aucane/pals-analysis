@@ -1,44 +1,6 @@
 import logging
 
-import pandas as pd
-from db import DatabaseConnexion
-from config import DB_CONFIG, CSV_PATHS
-
-LOGGER = logging.getLogger("PIPELINE")
-
-
-def extract(table_name):
-    # Manipulations to extract data correctly
-    data_extractors = {
-        "combat-attribute": lambda: pd.read_csv(CSV_PATHS["combat-attribute"], skiprows=1),
-        "refresh-area": lambda: pd.read_csv(CSV_PATHS["refresh-area"], skiprows=4),
-        "job-skill": lambda: pd.read_csv(CSV_PATHS["job-skill"], skiprows=1),
-        "hidden-attribute": lambda: pd.read_csv(CSV_PATHS["hidden-attribute"]),
-        "tower-boss-attribute": lambda: pd.read_csv(CSV_PATHS["tower-boss-attribute"], index_col="name").T.reset_index().rename(columns={"index": "name"}),
-        "ordinary-boss-attribute": lambda: pd.read_csv(CSV_PATHS["ordinary-boss-attribute"],  skiprows=3)
-    }
-    return data_extractors[table_name]()
-
-def load_data(db):
-
-    def process(table_name):
-        # TODO : sortir la fonction d'ici ?
-        LOGGER.info(f"PROCESSING TABLE '{table_name}'...")
-        # Extract
-        LOGGER.info("Extracting data...")
-        df = extract(table_name)
-        # Load
-        LOGGER.info("Loading data in the database...")
-        db.load_df_as_table(df, table_name, if_exists="replace")
-
-        LOGGER.info("Done !\n")
-
-    process(table_name="combat-attribute")
-    process(table_name="refresh-area")
-    process(table_name="job-skill")
-    process(table_name="hidden-attribute")
-    process(table_name="tower-boss-attribute")
-    process(table_name="ordinary-boss-attribute")
+LOGGER = logging.getLogger("DATA CLEANING")
 
 def clean_combat_attribute(db):
     LOGGER.info("Transforming combat-attribute...")
@@ -185,12 +147,3 @@ def clean_data(db):
     clean_hidden_attribute(db)
     clean_tower_boss_attribute(db)
     clean_ordinary_boss_attribute(db)
-
-def pipeline():
-    db = DatabaseConnexion(**DB_CONFIG)
-    load_data(db)
-    clean_data(db)
-
-
-if __name__ == "__main__":
-    pipeline()
