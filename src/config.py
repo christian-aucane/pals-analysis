@@ -21,6 +21,4 @@ CSV_PATHS = {
     "ordinary-boss-attribute": RAW_DATA_DIR / "Palworld_Data-comparison of ordinary BOSS attributes.csv",
 }
 
-# TODO : débugger le logger
-
 logging.basicConfig(level=logging.DEBUG)
