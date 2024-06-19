@@ -7,7 +7,6 @@ from config import DB_CONFIG, CSV_PATHS
 LOGGER = logging.getLogger("ETL")
 
 
-
 def extract(table_name):
     # Manipulations to extract data correctly
     data_extractors = {
@@ -41,7 +40,7 @@ def load_data(db):
     process(table_name="tower-boss-attribute")
     process(table_name="ordinary-boss-attribute")
 
-def transform_combat_attribute(db):
+def clean_combat_attribute(db):
     LOGGER.info("Transforming combat-attribute...")
     # Delete columns
     empty_cols = ["OverrideNameTextID",
@@ -81,7 +80,7 @@ def transform_combat_attribute(db):
 
     LOGGER.info("Done !\n")
 
-def transform_refresh_area(db):
+def clean_refresh_area(db):
     LOGGER.info("Transforming refresh-area...")
     empty_cols = ["Unnamed: 4",
                   "Unnamed: 12"]
@@ -98,7 +97,7 @@ def transform_refresh_area(db):
 
     LOGGER.info("Done !\n")
 
-def transform_job_skill(db):
+def clean_job_skill(db):
     LOGGER.info("Transforming job-skill...")
     empty_cols = ["Handling speed",
                   "ranch items",
@@ -111,7 +110,7 @@ def transform_job_skill(db):
 
     LOGGER.info("Done !\n")
 
-def transform_hidden_attribute(db):
+def clean_hidden_attribute(db):
     LOGGER.info("Transforming hidden-attribute...")
     empty_cols = ["ZukanIndexSuffix",
                   "AISightResponse"]
@@ -140,7 +139,7 @@ def transform_hidden_attribute(db):
 
     LOGGER.info("Done !\n")
 
-def transform_tower_boss_attribute(db):
+def clean_tower_boss_attribute(db):
     LOGGER.info("Transforming tower-boss-attribute...")
 
     # BOOL
@@ -166,18 +165,30 @@ def transform_tower_boss_attribute(db):
 
     LOGGER.info("Done !\n")
 
+def clean_ordinary_boss_attribute(db):
+    LOGGER.info("Transforming ordinary-boss-attribute...")
+    empty_cols = ["Unnamed: 2",
+                  "Unnamed: 5"]
+    db.delete_columns(table_name="ordinary-boss-attribute", column_names=empty_cols)
 
-def transform_data(db):
+    # INT
+    for col in ["HP", "Remote attack"]:
+        db.change_type(table_name="ordinary-boss-attribute", column_name=col, new_column_type=int)
+
+    LOGGER.info("Done !\n")
+
+def clean_data(db):
     transform_combat_attribute(db)
-    transform_refresh_area(db)
-    transform_job_skill(db)
-    transform_hidden_attribute(db)
-    transform_tower_boss_attribute(db)
+    clean_refresh_area(db)
+    clean_job_skill(db)
+    clean_hidden_attribute(db)
+    clean_tower_boss_attribute(db)
+    clean_ordinary_boss_attribute(db)
 
 def pipeline():
     db = DatabaseConnexion(**DB_CONFIG)
     load_data(db)
-    transform_data(db)
+    clean_data(db)
 
 
 if __name__ == "__main__":
