@@ -1,6 +1,9 @@
 import pandas as pd
 from db import DatabaseConnexion
-from config import DB_CONFIG, CSV_PATHS
+from config import DB_CONFIG, CSV_PATHS, LOGGER
+
+
+# utils
 
 
 def extract(table_name):
@@ -19,15 +22,15 @@ def load_data(db):
 
     def process(table_name):
         # TODO : sortir la fonction d'ici ?
-        print(f"PROCESSING TABLE '{table_name}'...")
+        LOGGER.info(f"PROCESSING TABLE '{table_name}'...")
         # Extract
-        print("Extracting data...")
+        LOGGER.info("Extracting data...")
         df = extract(table_name)
         # Load
-        print("Loading data in the database...")
+        LOGGER.info("Loading data in the database...")
         db.load_df_as_table(df, table_name, if_exists="replace")
 
-        print("Done !\n")
+        LOGGER.info("Done !\n")
 
     process(table_name="combat-attribute")
     process(table_name="refresh-area")
@@ -37,6 +40,7 @@ def load_data(db):
     process(table_name="ordinary-boss-attribute")
 
 def transform_combat_attribute(db):
+    LOGGER.info("Transforming combat-attribute...")
     # Delete columns
     empty_cols = ["OverrideNameTextID",
                   "NamePrefixID",
@@ -54,9 +58,7 @@ def transform_combat_attribute(db):
 
     # nocturnal / Variant
     for col in ["nocturnal", "Variant"]:
-        db.replace_nulls(table_name="combat-attribute", column_name=col, value=0)
-        db.replace_values(table_name="combat-attribute", column_name=col, value_to_replace="yes", new_value=1)
-        db.change_type(table_name="combat-attribute", column_name="nocturnal", new_column_type=bool)
+        db.replace_yes_null(table_name="combat-attribute", column_name=col)
 
     # Riding sprint speed
     db.replace_nulls(table_name="combat-attribute", column_name="Riding sprint speed", value=0)
@@ -75,10 +77,25 @@ def transform_combat_attribute(db):
         db.strip_right(table_name="combat-attribute", column_name=col, value_to_strip="(")
         db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"lvl{col[2:]}", new_column_type=float) # Bad characters not 'lvl
 
+def transform_refresh_area(db):
+    LOGGER.info("Transforming refresh-area...")
+    empty_cols = ["Unnamed: 4",
+                  "Unnamed: 12"]
+
+    db.delete_columns(table_name="refresh-area", column_names=empty_cols)
+
+    # Type INT
+    for col in ["ID", "minimum level", "maximum level", "ID.2"]:
+        db.change_type(table_name="refresh-area", column_name=col, new_column_type=int)
+
+    # Replace yes null
+    for col in ["Night only", "Night only.1"]:
+        db.replace_yes_null(table_name="refresh-area", column_name=col)
+
 
 def transform_data(db):
     transform_combat_attribute(db)
-
+    transform_refresh_area(db)
 
 def pipeline():
     db = DatabaseConnexion(**DB_CONFIG)
