@@ -7,6 +7,8 @@ from sqlalchemy.exc import OperationalError
 LOGGER = logging.getLogger("DataBase")
 
 # TODO : ajouter la gestion des transactions
+# TODO : DOCSTRINGS !!!
+# TODO : séparer connexion et gestion des requètes en 2 objets ?
 
 class DatabaseConnexion:
     def __init__(self, user, password, host, database):
@@ -99,10 +101,13 @@ class DatabaseConnexion:
     def _close(self):
         if self.connection:
             self.connection.close()
+            self.connection = None
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
 
     def __del__(self):
         self._close()
-
 
     def replace_yes_null(self, table_name, column_name):
         self.replace_nulls(table_name=table_name, column_name=column_name, value=0)
