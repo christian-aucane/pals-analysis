@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 
-LOGGER = logging.getLogger("DataBase")
+LOGGER = logging.getLogger("DATABASE")
 
 # TODO : ajouter la gestion des transactions
 # TODO : DOCSTRINGS !!!

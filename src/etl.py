@@ -4,7 +4,7 @@ import pandas as pd
 from db import DatabaseConnexion
 from config import DB_CONFIG, CSV_PATHS
 
-LOGGER = logging.getLogger("ETL")
+LOGGER = logging.getLogger("PIPELINE")
 
 
 def extract(table_name):
