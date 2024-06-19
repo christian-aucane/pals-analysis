@@ -9,16 +9,16 @@ LOGGER = logging.getLogger("ETL")
 
 
 def extract(table_name):
+    # Manipulations to extract data correctly
     data_extractors = {
         "combat-attribute": lambda: pd.read_csv(CSV_PATHS["combat-attribute"], skiprows=1),
         "refresh-area": lambda: pd.read_csv(CSV_PATHS["refresh-area"], skiprows=4),
         "job-skill": lambda: pd.read_csv(CSV_PATHS["job-skill"], skiprows=1),
         "hidden-attribute": lambda: pd.read_csv(CSV_PATHS["hidden-attribute"]),
-        "tower-boss-attribute": lambda: pd.read_csv(CSV_PATHS["tower-boss-attribute"], index_col="name").T,
+        "tower-boss-attribute": lambda: pd.read_csv(CSV_PATHS["tower-boss-attribute"], index_col="name").T.reset_index().rename(columns={"index": "name"}),
         "ordinary-boss-attribute": lambda: pd.read_csv(CSV_PATHS["ordinary-boss-attribute"],  skiprows=3)
     }
     return data_extractors[table_name]()
-
 
 def load_data(db):
 
@@ -140,12 +140,39 @@ def transform_hidden_attribute(db):
 
     LOGGER.info("Done !\n")
 
+def transform_tower_boss_attribute(db):
+    LOGGER.info("Transforming tower-boss-attribute...")
+
+    # BOOL
+    for col in ["Ignore the bluntness", "Ignore displacement"]:
+        db.replace_TRUE_FALSE(table_name="tower-boss-attribute", column_name=col)
+
+    # INT
+    for col in ["HP", 
+                "melee attack",
+                "Remote attack",
+                "defense",
+                "Support",
+                "experience ratio",
+                "slow walking speed",
+                "walking speed",
+                "running speed",
+                "riding speed",
+                "Handling speed",
+                "BiologicalGrade",
+                "endurance",
+                "fecundity"]:
+        db.change_type(table_name="tower-boss-attribute", column_name=col, new_column_type=int)
+
+    LOGGER.info("Done !\n")
+
 
 def transform_data(db):
     transform_combat_attribute(db)
     transform_refresh_area(db)
     transform_job_skill(db)
     transform_hidden_attribute(db)
+    transform_tower_boss_attribute(db)
 
 def pipeline():
     db = DatabaseConnexion(**DB_CONFIG)
