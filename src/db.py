@@ -1,8 +1,10 @@
+import logging
+
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 
-from config import LOGGER
+LOGGER = logging.getLogger("DataBase")
 
 # TODO : ajouter la gestion des transactions
 

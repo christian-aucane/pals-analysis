@@ -92,10 +92,22 @@ def transform_refresh_area(db):
     for col in ["Night only", "Night only.1"]:
         db.replace_yes_null(table_name="refresh-area", column_name=col)
 
+def transform_job_skill(db):
+    LOGGER.info("Transforming job-skill...")
+    empty_cols = ["Handling speed",
+                  "ranch items",
+                  "pasture minimum output",
+                  "The largest ranch (Rank = partner skill level)"]
+
+    db.delete_columns(table_name="job-skill", column_names=empty_cols)
+
+    db.replace_yes_null(table_name="job-skill", column_name="night shift")
+
 
 def transform_data(db):
     transform_combat_attribute(db)
     transform_refresh_area(db)
+    transform_job_skill(db)
 
 def pipeline():
     db = DatabaseConnexion(**DB_CONFIG)

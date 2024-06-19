@@ -22,6 +22,5 @@ CSV_PATHS = {
 }
 
 # TODO : débugger le logger
-LOGGER = logging.getLogger("pals-analysis")
 
 logging.basicConfig(level=logging.DEBUG)
