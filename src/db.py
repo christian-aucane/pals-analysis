@@ -109,6 +109,11 @@ class DatabaseConnexion:
         self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="yes", new_value=1)
         self.change_type(table_name=table_name, column_name=column_name, new_column_type=bool)
 
+    def replace_TRUE_FALSE(self, table_name, column_name):
+        self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="TRUE", new_value=1)
+        self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="FALSE", new_value=0)
+        self.change_type(table_name=table_name, column_name=column_name, new_column_type=bool)
+
 
 if __name__ == "__main__":
     db = DatabaseConnexion("root", "root", "localhost", "test")
