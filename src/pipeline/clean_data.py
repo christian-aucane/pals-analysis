@@ -2,8 +2,9 @@ import logging
 
 LOGGER = logging.getLogger("DATA CLEANING")
 
+
 def clean_combat_attribute(db):
-    LOGGER.info("Transforming combat-attribute...")
+    LOGGER.info("TABLE combat-attribute...")
     # Delete columns
     empty_cols = ["OverrideNameTextID",
                   "NamePrefixID",
@@ -40,10 +41,10 @@ def clean_combat_attribute(db):
         db.strip_right(table_name="combat-attribute", column_name=col, value_to_strip="(")
         db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"lvl{col[2:]}", new_column_type=float) # Bad characters not 'lvl
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_refresh_area(db):
-    LOGGER.info("Transforming refresh-area...")
+    LOGGER.info("TABLE refresh-area...")
     empty_cols = ["Unnamed: 4",
                   "Unnamed: 12"]
 
@@ -57,10 +58,10 @@ def clean_refresh_area(db):
     for col in ["Night only", "Night only.1"]:
         db.replace_yes_null(table_name="refresh-area", column_name=col)
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_job_skill(db):
-    LOGGER.info("Transforming job-skill...")
+    LOGGER.info("TABLE job-skill...")
     empty_cols = ["Handling speed",
                   "ranch items",
                   "pasture minimum output",
@@ -70,10 +71,10 @@ def clean_job_skill(db):
 
     db.replace_yes_null(table_name="job-skill", column_name="night shift")
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_hidden_attribute(db):
-    LOGGER.info("Transforming hidden-attribute...")
+    LOGGER.info("TABLE hidden-attribute...")
     empty_cols = ["ZukanIndexSuffix",
                   "AISightResponse"]
     useless_cols = ["IsPal",
@@ -100,10 +101,10 @@ def clean_hidden_attribute(db):
         db.replace_string(table_name="hidden-attribute", column_name=col, old_string="%", new_string="")
         db.rename_column(table_name="hidden-attribute", old_column_name=col, new_column_name=f"{col}_percent", new_column_type=int)    
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_tower_boss_attribute(db):
-    LOGGER.info("Transforming tower-boss-attribute...")
+    LOGGER.info("TABLE tower-boss-attribute...")
 
     # BOOL
     for col in ["Ignore the bluntness", "Ignore displacement"]:
@@ -126,10 +127,10 @@ def clean_tower_boss_attribute(db):
                 "fecundity"]:
         db.change_type(table_name="tower-boss-attribute", column_name=col, new_column_type=int)
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_ordinary_boss_attribute(db):
-    LOGGER.info("Transforming ordinary-boss-attribute...")
+    LOGGER.info("TABLE ordinary-boss-attribute...")
     empty_cols = ["Unnamed: 2",
                   "Unnamed: 5"]
     db.delete_columns(table_name="ordinary-boss-attribute", column_names=empty_cols)
@@ -138,12 +139,16 @@ def clean_ordinary_boss_attribute(db):
     for col in ["HP", "Remote attack"]:
         db.change_type(table_name="ordinary-boss-attribute", column_name=col, new_column_type=int)
 
-    LOGGER.info("Done !\n")
+    LOGGER.info("TABLE CLEANED !\n")
 
 def clean_data(db):
+    LOGGER.info("CLEANING DATA...\n")
+
     clean_combat_attribute(db)
     clean_refresh_area(db)
     clean_job_skill(db)
     clean_hidden_attribute(db)
     clean_tower_boss_attribute(db)
     clean_ordinary_boss_attribute(db)
+
+    LOGGER.info("DATA CLEANED !\n")

@@ -93,12 +93,14 @@ class DatabaseConnexion:
             raise ValueError(f"Unknown column type : {column_type} - Only {' '.join(map(str, python_to_sql.keys()))} are supported")
         
     def _connect(self):
+        LOGGER.info("CONNECTING ...\n")
         self.engine = create_engine(f'mysql+pymysql://{self.user}:{self.password}@{self.host}/{self.database}')
         self.connection = self.engine.connect()
         self._execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
         self._execute(f"USE {self.database}")
 
     def _close(self):
+        LOGGER.info("CLOSING CONNECTION ...\n")
         if self.connection:
             self.connection.close()
             self.connection = None
