@@ -1,9 +1,11 @@
+import logging
+
 import pandas as pd
 from db import DatabaseConnexion
-from config import DB_CONFIG, CSV_PATHS, LOGGER
+from config import DB_CONFIG, CSV_PATHS
 
+LOGGER = logging.getLogger("ETL")
 
-# utils
 
 
 def extract(table_name):
@@ -77,6 +79,8 @@ def transform_combat_attribute(db):
         db.strip_right(table_name="combat-attribute", column_name=col, value_to_strip="(")
         db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"lvl{col[2:]}", new_column_type=float) # Bad characters not 'lvl
 
+    LOGGER.info("Done !\n")
+
 def transform_refresh_area(db):
     LOGGER.info("Transforming refresh-area...")
     empty_cols = ["Unnamed: 4",
@@ -92,6 +96,8 @@ def transform_refresh_area(db):
     for col in ["Night only", "Night only.1"]:
         db.replace_yes_null(table_name="refresh-area", column_name=col)
 
+    LOGGER.info("Done !\n")
+
 def transform_job_skill(db):
     LOGGER.info("Transforming job-skill...")
     empty_cols = ["Handling speed",
@@ -103,11 +109,43 @@ def transform_job_skill(db):
 
     db.replace_yes_null(table_name="job-skill", column_name="night shift")
 
+    LOGGER.info("Done !\n")
+
+def transform_hidden_attribute(db):
+    LOGGER.info("Transforming hidden-attribute...")
+    empty_cols = ["ZukanIndexSuffix",
+                  "AISightResponse"]
+    useless_cols = ["IsPal",
+                    "Organization",
+                    "weapon",
+                    "WeaponEquip"]
+
+    db.delete_columns(table_name="hidden-attribute", column_names=empty_cols + useless_cols)
+
+    db.replace_string(table_name="hidden-attribute",
+                      column_name="OverrideNameTextID",
+                      old_string="PAL_NAME_",
+                      new_string="")
+    db.replace_string(table_name="hidden-attribute",
+                      column_name="OverridePartnerSkillTextID",
+                      old_string="PARTNERSKILL_",
+                      new_string="")
+
+    for col in ["Tribe", "GenusCategory", "BattleBGM"]:
+        db.strip_left(table_name="hidden-attribute", column_name=col, value_to_strip="::")
+
+    for col in ["(being) damage multiplier", "Capture probability"]:
+        db.replace_string(table_name="hidden-attribute", column_name=col, old_string="%", new_string="")
+        db.rename_column(table_name="hidden-attribute", old_column_name=col, new_column_name=f"{col}_percent", new_column_type=int)    
+
+    LOGGER.info("Done !\n")
+
 
 def transform_data(db):
     transform_combat_attribute(db)
     transform_refresh_area(db)
     transform_job_skill(db)
+    transform_hidden_attribute(db)
 
 def pipeline():
     db = DatabaseConnexion(**DB_CONFIG)
