@@ -38,7 +38,7 @@ class DatabaseConnexion:
 
     def delete_columns(self, table_name, column_names):
         with self.engine.connect() as connection:
-            query = f"ALTER TABLE `{table_name}` " + ", ".join([f"DROP COLUMN {col}" for col in column_names])
+            query = f"ALTER TABLE `{table_name}` " + ", ".join([f"DROP COLUMN `{col}`" for col in column_names])
             self._execute(query)
 
     def replace_values(self, table_name, column_name, value_to_replace, new_value):
@@ -100,6 +100,13 @@ class DatabaseConnexion:
 
     def __del__(self):
         self._close()
+
+
+    def replace_yes_null(self, table_name, column_name):
+        self.replace_nulls(table_name=table_name, column_name=column_name, value=0)
+        self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="yes", new_value=1)
+        self.change_type(table_name=table_name, column_name=column_name, new_column_type=bool)
+
 
 if __name__ == "__main__":
     db = DatabaseConnexion("root", "root", "localhost", "test")
