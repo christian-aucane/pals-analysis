@@ -1,18 +1,19 @@
 import logging
 
-import pandas as pd
-from utils.db import DatabaseConnexion
+from utils.db import Database
 from config import DB_CONFIG
-from pipeline import load_raw_dataset, clean_db
+from pipeline import load_raw_dataset, clean_data, normalize_column_names
 
 LOGGER = logging.getLogger("PIPELINE")
 
 def pipeline():
     LOGGER.info("STARTING PIPELINE PROCESSING ...\n")
 
-    db = DatabaseConnexion(**DB_CONFIG)
+    db = Database(**DB_CONFIG)
     load_raw_dataset(db)
-    clean_db(db)
+    clean_data(db)
+    normalize_column_names(db)
+
 
     LOGGER.info("PIPELINE PROCESSED !\n")
 
