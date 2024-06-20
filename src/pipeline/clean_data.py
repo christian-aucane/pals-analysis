@@ -1,10 +1,10 @@
 import logging
 
 from utils.db import Database
+from utils.regex import normalize_special_cases, remove_special_characters, camel_case_to_snake_case
 
 
 LOGGER = logging.getLogger("DATA CLEANING")
-
 
 def clean_combat_attribute(db: Database):
     LOGGER.info("TABLE combat-attribute...")
@@ -156,6 +156,36 @@ def clean_ordinary_boss_attribute(db: Database):
 
     LOGGER.info("TABLE CLEANED !\n")
 
+
+def normalize_column_names(db: Database):
+    SPECIAL_CASES = {
+        "ID": "id",
+        "HP": "hp",
+        "4D": "4d",
+        "AIRResponse": "air_response",
+        "lvl1": "lvl_1",
+        "lvl2": "lvl_2",
+        "lvl3": "lvl_3",
+        "lvl4": "lvl_4",
+        "lvl5": "lvl_5",
+    }
+
+    def normalize_column_name(column_name: str):
+        column_name = normalize_special_cases(column_name, SPECIAL_CASES)
+        column_name = remove_special_characters(column_name, replace_with="_")
+        column_name = camel_case_to_snake_case(column_name)
+        column_name = column_name.strip('_').lower().replace("__", "_")
+        return column_name
+
+    table_names = db.list_table_names()
+    for table_name in table_names:
+        columns = db.list_columns_names(table_name)
+        for col in columns:
+            normalized_col = normalize_column_name(col)
+            if normalized_col != col:
+                db.rename_column(table_name, col, normalized_col)
+
+
 def clean_data(db: Database):
     LOGGER.info("CLEANING DATA...\n")
 
@@ -165,5 +195,7 @@ def clean_data(db: Database):
     clean_hidden_attribute(db)
     clean_tower_boss_attribute(db)
     clean_ordinary_boss_attribute(db)
+
+    normalize_column_names(db)
 
     LOGGER.info("DATA CLEANED !\n")
