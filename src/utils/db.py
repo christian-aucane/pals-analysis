@@ -40,8 +40,9 @@ class DbConnexionManager:
             self.engine = None
 
     # PUBLIC METHOD
-    def execute(self, query, params=None):
+    def execute(self, query, params={}):
         # TODO : ajouter optimisation du nb de connexions et de requetes
+        
         formatted_query = reduce(lambda q, kv: q.replace(f":{kv[0]}", f"'{kv[1]}'"), params.items(), query)
         LOGGER.debug(f"Executing query : {formatted_query}")
         try:
@@ -51,32 +52,56 @@ class DbConnexionManager:
             LOGGER.error(e)
 
 
-class DataBase:
+class Database:
     def __init__(self, user, password, host, database):
         self._db_connexion = DbConnexionManager(user, password, host, database)
 
+    # PROPERTIES
+    @property
+    def inspector(self):
+        # TODO : create an inspector class from scratch ?
+        return inspect(self._db_connexion.engine)
+
     # PRIVATE METHODS
-    def _execute(self, query, params=None):
+    def _execute(self, query, params={}):
         self._db_connexion.execute(query, params)
 
     @staticmethod
-    def _sql_type(column_type):
-        python_to_sql = {bool: "TINYINT(1)", int: "INT", float: "FLOAT", str: "VARCHAR(255)"}
+    def _python_to_sql_type(column_type: type):
+        python_to_sql = {bool: "TINYINT(1)", int: "INT", float: "FLOAT", str: "TEXT"}
         try:
             return python_to_sql[column_type]
         except KeyError:
             raise ValueError(f"Unknown column type : {column_type} - Only {' '.join(map(str, python_to_sql.keys()))} are supported")
         
+    def _detect_column_sql_type(self, table_name, column_name):
+        column_info = self.inspector.get_columns(table_name)
+        column_type = None
+
+        for col in column_info:
+            if col["name"] == column_name:
+                column_type = col["type"]
+                break
+        if column_type is None:
+            raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
+        return column_type
+
     # PUBLICS METHODS
+    def inspect_columns(self, table_name):
+        return self.inspector.get_columns(table_name)
+    
+    def list_columns_names(self, table_name):
+        return [col["name"] for col in self.inspector.get_columns(table_name)]
+    
+    def list_table_names(self):
+        return self.inspector.get_table_names()
+    
     def load_df_as_table(self, df, table_name, if_exists="replace"):
         df.to_sql(table_name, self._db_connexion.engine, if_exists=if_exists, index=False)
 
     def get_df_from_query(self, query):
         return pd.read_sql(query, self._db_connexion.engine)
 
-    def get_inspector(self):
-        return inspect(self._db_connexion.engine)
-    
     def delete_columns(self, table_name, column_names):
         query = f"ALTER TABLE `{table_name}` " + ", ".join([f"DROP COLUMN `{col}`" for col in column_names])
         self._execute(query)
@@ -108,16 +133,18 @@ class DataBase:
         params = {"value": value}
         self._execute(query, params)
 
-    def rename_column(self, table_name, old_column_name, new_column_name, new_column_type=None):
-        if new_column_type is None:
-            # TODO : récupérer le type dunamiquement a la place de str !!
-            new_column_type = str
-            ...
-        query = f"ALTER TABLE `{table_name}` CHANGE `{old_column_name}` `{new_column_name}` {self._sql_type(new_column_type)}"
+    def rename_column(self, table_name, old_column_name, new_column_name, new_column_type: type | None = None):
+        LOGGER.debug(f"Renaming column '{old_column_name}' in table '{table_name}' to '{new_column_name}'")
+        if new_column_type is not None:
+            sql_type = self._python_to_sql_type(new_column_type)
+        else:
+            sql_type = self._detect_column_sql_type(table_name, old_column_name)
+
+        query = f"ALTER TABLE `{table_name}` CHANGE `{old_column_name}` `{new_column_name}` {sql_type}"
         self._execute(query)
 
     def change_type(self, table_name, column_name, new_column_type):
-        query = f"ALTER TABLE `{table_name}` MODIFY `{column_name}` {self._sql_type(new_column_type)}"
+        query = f"ALTER TABLE `{table_name}` MODIFY `{column_name}` {self._python_to_sql_type(new_column_type)}"
         self._execute(query)
     
     def replace_yes_null(self, table_name, column_name):
