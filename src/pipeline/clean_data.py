@@ -1,12 +1,12 @@
 import logging
 
-from utils.db import DatabaseConnexion
+from utils.db import Database
 
 
 LOGGER = logging.getLogger("DATA CLEANING")
 
 
-def clean_combat_attribute(db: DatabaseConnexion):
+def clean_combat_attribute(db: Database):
     LOGGER.info("TABLE combat-attribute...")
 
     # Delete columns
@@ -23,7 +23,7 @@ def clean_combat_attribute(db: DatabaseConnexion):
     db.delete_columns(table_name="combat-attribute", column_names=empty_cols + useless_cols)
     
     # Rename columns
-    db.rename_column(table_name="combat-attribute", old_column_name="BPCLass", new_column_name="Tribe")
+    db.rename_column(table_name="combat-attribute", old_column_name="BPClass", new_column_name="Tribe")
 
     # Replace yes and null with true and false (BOOL)
     for col in ["nocturnal", "Variant"]:
@@ -51,7 +51,7 @@ def clean_combat_attribute(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_refresh_area(db: DatabaseConnexion):
+def clean_refresh_area(db: Database):
     LOGGER.info("TABLE refresh-area...")
 
     # Delete columns
@@ -69,7 +69,7 @@ def clean_refresh_area(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_job_skill(db: DatabaseConnexion):
+def clean_job_skill(db: Database):
     LOGGER.info("TABLE job-skill...")
 
     # Delete columns
@@ -84,7 +84,7 @@ def clean_job_skill(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_hidden_attribute(db: DatabaseConnexion):
+def clean_hidden_attribute(db: Database):
     LOGGER.info("TABLE hidden-attribute...")
 
     # Delete columns
@@ -116,7 +116,7 @@ def clean_hidden_attribute(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_tower_boss_attribute(db: DatabaseConnexion):
+def clean_tower_boss_attribute(db: Database):
     LOGGER.info("TABLE tower-boss-attribute...")
 
     # Type BOOL
@@ -142,7 +142,7 @@ def clean_tower_boss_attribute(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_ordinary_boss_attribute(db: DatabaseConnexion):
+def clean_ordinary_boss_attribute(db: Database):
     LOGGER.info("TABLE ordinary-boss-attribute...")
 
     # Delete columns
@@ -156,7 +156,7 @@ def clean_ordinary_boss_attribute(db: DatabaseConnexion):
 
     LOGGER.info("TABLE CLEANED !\n")
 
-def clean_db(db: DatabaseConnexion):
+def clean_data(db: Database):
     LOGGER.info("CLEANING DATA...\n")
 
     clean_combat_attribute(db)

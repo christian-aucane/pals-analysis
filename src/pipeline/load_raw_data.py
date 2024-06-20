@@ -1,14 +1,14 @@
 
 import logging
 
-from utils.db import DatabaseConnexion
+from utils.db import Database
 from .extract_raw_data import extract_raw_data
 
 
 LOGGER = logging.getLogger("DATA LOADING")
 
 
-def load(db: DatabaseConnexion, table_name):
+def load(db: Database, table_name):
     LOGGER.info(f"TABLE '{table_name}'...")
 
     # Extract
@@ -18,7 +18,7 @@ def load(db: DatabaseConnexion, table_name):
 
     LOGGER.info("TABLE LOADED !\n")
 
-def load_raw_dataset(db: DatabaseConnexion):
+def load_raw_dataset(db: Database):
     LOGGER.info("DATASET...\n")
 
     load(db=db, table_name="combat-attribute")
