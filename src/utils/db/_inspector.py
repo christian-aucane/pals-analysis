@@ -6,12 +6,15 @@ class _DbInspector:
     def __init__(self, engine):
         self._inspector = inspect(engine)
 
-    def get_columns(self, table_name: str):
+    def list_columns(self, table_name: str):
         return self._inspector.get_columns(table_name)
 
-    def get_table_names(self):
+    def list_table_names(self):
         return self._inspector.get_table_names()
 
+    def list_columns_names(self, table_name: str):
+        return [col["name"] for col in self._inspector.get_columns(table_name)]
+    
     def detect_column_sql_type(self, table_name: str, column_name: str):
         column_info = self._inspector.get_columns(table_name)
         column_type = None

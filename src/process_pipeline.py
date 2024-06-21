@@ -15,7 +15,7 @@ def init_db():
                   "tower-boss-attribute",
                   "ordinary-boss-attribute",
                   "pals"]:
-        db.delete_table(table_name=table, if_exists=True)
+        db.drop_table(table_name=table, if_exists=True)
     
     return db
 
@@ -26,6 +26,7 @@ def pipeline():
     load_raw_dataset(db)
     clean_data(db)
     optimize_db(db)
+
     LOGGER.info("PIPELINE PROCESSED !\n")
 
 

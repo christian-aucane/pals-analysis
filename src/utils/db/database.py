@@ -49,6 +49,11 @@ class Database:
     def _get_df_from_query(self, query: str):
         return self._dataframe_manager.get_df_from_query(query)
 
+    def list_table_names(self):
+        return self.inspector.list_table_names()
+
+    def list_columns_names(self, table_name: str):
+        return self.inspector.list_columns_names(table_name=table_name)
     ###########################################################################
     # Tables manipulation :
     ###########################################################################
