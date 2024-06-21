@@ -6,9 +6,9 @@ class Analysis:
     def __init__(self):
         self.arr = [1,2]
 
-    def x(self):
-        db = pd.read_csv("raw_data/Palworld_Data-Tower BOSS attribute comparison.csv")
-        st.line_chart(db)
+    def load_data(self):
+        self.db = pd.read_csv("raw_data/Palworld_Data-Tower BOSS attribute comparison.csv").T
+        st.line_chart(self.db)
 
     def xx(self):
         pass
@@ -17,8 +17,9 @@ class Analysis:
         st.write(""" # My first app""")
         st.sidebar.title("bruh")
         select = st.sidebar.selectbox("bruh", self.arr)
+        self.categories = st.sidebar.multiselect('Select Filter',self.arr)
         if select == 1:
-            self.x()
+            self.load_data()
         elif select == 2:
             self.xx()
 
