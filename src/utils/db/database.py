@@ -1,70 +1,14 @@
 import logging
-from functools import reduce
 
 import pandas as pd
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.exc import OperationalError
+
+from ._inspector import _DbInspector
+from ._connection_manager import _DbConnexionManager
+
 
 LOGGER = logging.getLogger("DATABASE")
 
 # TODO : ajouter docstrings
-
-
-class _DbInspector:
-    # TODO : create an inspector class from scratch ?
-    def __init__(self, engine):
-        self._inspector = inspect(engine)
-
-    def get_columns(self, table_name: str):
-        return self._inspector.get_columns(table_name)
-
-    def get_table_names(self):
-        return self._inspector.get_table_names()
-
-class _DbConnexionManager:
-    def __init__(self, user: str, password: str, host: str, database: str):
-        self.user = user
-        self.password = password
-        self.host = host
-        self.database = database
-        self.engine = None
-        self.connection = None
-        self._connect()
-
-    def __del__(self):
-        self._close()
-
-    # PRIVATE METHODS
-    def _connect(self):
-        LOGGER.info("CONNECTING ...\n")
-        db_uri = f'mysql+pymysql://{self.user}:{self.password}@{self.host}/{self.database}'
-        self.engine = create_engine(db_uri)
-        self.connection = self.engine.connect()
-        self.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
-        self.execute(f"USE {self.database}")
-
-    def _close(self):
-        LOGGER.info("CLOSING CONNECTION ...\n")
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-        if self.engine:
-            self.engine.dispose()
-            self.engine = None
-
-    # PUBLIC METHOD
-    def execute(self, query: str, params: dict = {}):
-        # TODO : add optimization of nb of connections and queries
-        formatted_query = reduce(lambda q, kv: q.replace(f":{kv[0]}",
-                                                         f"'{kv[1]}'"),
-                                                         params.items(),
-                                                         query)
-        LOGGER.debug(f"Executing query : {formatted_query}")
-        try:
-            self.connection.execute(text(query), params)
-            self.connection.commit()
-        except OperationalError as e:
-            LOGGER.error(e)
 
 
 class Database:
@@ -80,18 +24,6 @@ class Database:
     def _execute(self, query: str, params: dict = {}):
         self._db_connexion.execute(query, params)
 
-    def _detect_column_sql_type(self, table_name: str, column_name: str):
-        column_info = self.inspector.get_columns(table_name)
-        column_type = None
-
-        for col in column_info:
-            if col["name"] == column_name:
-                column_type = col["type"]
-                break
-        if column_type is None:
-            raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
-        return column_type
-    
     def _generate_select_query(self,
                                table_name: str,
                                column_names: list[str],
@@ -183,8 +115,8 @@ class Database:
                       new_column_name: str,
                       sql_type: str | None = None):
         if sql_type is None:
-            sql_type = self._detect_column_sql_type(table_name=table_name,
-                                                    column_name=old_column_name)
+            sql_type = self.inspector.detect_column_sql_type(table_name=table_name,
+                                                             column_name=old_column_name)
 
         query = f"ALTER TABLE `{table_name}` CHANGE `{old_column_name}` `{new_column_name}` {sql_type}"
         self._execute(query)
