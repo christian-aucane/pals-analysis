@@ -2,10 +2,17 @@ import logging
 
 import pandas as pd
 
-from ._inspector import _DbInspector
-from ._connection_manager import _DbConnexionManager
-from ._sql_generator import _SqlGenerator
-
+try:
+    
+    from ._inspector import _DbInspector
+    from ._connection_manager import _DbConnexionManager
+    from ._sql_generator import _SqlGenerator
+    from ._dataframe_manager import _DataframeManager
+except ImportError:
+    from _inspector import _DbInspector
+    from _connection_manager import _DbConnexionManager
+    from _sql_generator import _SqlGenerator
+    from _dataframe_manager import _DataframeManager
 
 LOGGER = logging.getLogger("DATABASE")
 
@@ -17,6 +24,7 @@ class Database:
 
     def __init__(self, user: str, password: str, host: str, database: str):
         self._db_connexion = _DbConnexionManager(user, password, host, database)
+        self._dataframe_manager = _DataframeManager(self._db_connexion)
 
     # PROPERTIES
     @property
@@ -32,23 +40,14 @@ class Database:
     ###########################################################################
     # "Magic" methods :
     ###########################################################################
-    def list_columns_names(self, table_name: str):
-        return [col["name"] for col in self.inspector.get_columns(table_name)]
-    
-    def list_table_names(self):
-        return self.inspector.get_table_names()
-    
     def load_df_as_table(self,
                          df: pd.DataFrame,
                          table_name: str,
                          if_exists: str = "replace"):  # "fail", "replace", "append"
-        df.to_sql(table_name,
-                  self._db_connexion.engine,
-                  if_exists=if_exists,
-                  index=False)
+        self._dataframe_manager.load_df_as_table(df, table_name, if_exists)
 
-    def get_df_from_query(self, query: str):
-        return pd.read_sql(query, self._db_connexion.engine)
+    def _get_df_from_query(self, query: str):
+        return self._dataframe_manager.get_df_from_query(query)
 
     ###########################################################################
     # Tables manipulation :
@@ -64,8 +63,7 @@ class Database:
         query = f"CREATE TABLE IF NOT EXISTS `{new_table_name}` AS {select_query}"
         self._execute(query)
 
-    def delete_table(self, table_name: str, if_exists=True):
-
+    def drop_table(self, table_name: str, if_exists=True):
         query = f"DROP TABLE "
         if if_exists:
             query += "IF EXISTS "
@@ -275,8 +273,40 @@ class Database:
                                         reference_table_name=reference_table_name,
                                         reference_column_name=reference_column_name)
 
-    def get_df_from_table(self, table_name: str, column_names: str):
+    ###########################################################################
+    # Data reading
+    ###########################################################################
+
+    def get_df_from_select(self, table_name: str, columns_names: list[str]):
         query = self._sql_generator.generate_select(table_name=table_name,
-                                                   column_names=column_names)
-        return self.get_df_from_query(query)
+                                                    columns_names=columns_names)
+        print("columns names : ", columns_names)
+        print(f"Query : {query}")
+        return self._get_df_from_query(query)
     
+    def get_df_from_join(self,
+                         left_table_name: str,
+                         left_ref_col: str,
+                         right_table_name: str,
+                         right_ref_col: str,
+                         columns_names: tuple[list[str]] | None = None):
+        query = self._sql_generator.generate_select_join(left_table_name=left_table_name,
+                                                         left_ref_col=left_ref_col,
+                                                         right_table_name=right_table_name,
+                                                         right_ref_col=right_ref_col,
+                                                         columns_names=columns_names)
+        print("columns names : ", columns_names)
+        print(f"Query : {query}")
+        return self._get_df_from_query(query)
+    
+
+if __name__ == "__main__":
+    db = Database(user="root", password="root", host="localhost", database="palworld_database")
+
+    # print(db.get_df_from_select(table_name="pals", columns_names=["pal_id", "name"]))
+
+    print(db.get_df_from_join(left_table_name="pals",
+                              left_ref_col="unique_id",
+                              right_table_name="combat-attribute",
+                              right_ref_col="unique_id",
+                              columns_names=(["pal_id", "name"], ["lvl_1"])))
