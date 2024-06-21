@@ -319,3 +319,25 @@ class Database:
             FOREIGN KEY (`{column_name}`) REFERENCES `{reference_table_name}` (`{reference_column_name}`)
         """
         self._execute(query)
+
+    def add_foreign_key_column(self, 
+                               table_name: str,
+                               column_name: str,
+                               join_column_name: str,
+                               reference_table_name: str,
+                               reference_column_name: str,
+                               reference_join_column_name: str,
+                               sql_type: str = "INT"):
+        self.add_column(table_name=table_name,
+                        column_name=column_name,
+                        sql_type=sql_type)
+        self.update_column_from_another_column(dest_table_name=table_name,
+                                                dest_column_name=column_name,
+                                                src_table_name=reference_table_name,
+                                                src_column_name=reference_column_name,
+                                                src_join_column=reference_join_column_name,
+                                                dest_join_column=join_column_name)
+        self.add_foreign_key_constraint(table_name=table_name,
+                                        column_name=column_name,
+                                        reference_table_name=reference_table_name,
+                                        reference_column_name=reference_column_name)

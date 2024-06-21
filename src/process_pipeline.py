@@ -15,7 +15,7 @@ def init_db():
                   "tower-boss-attribute",
                   "ordinary-boss-attribute",
                   "pals"]:
-        db.drop_table_if_exists(table)
+        db.delete_table(table_name=table, if_exists=True)
     
     return db
 
