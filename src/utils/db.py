@@ -9,7 +9,19 @@ LOGGER = logging.getLogger("DATABASE")
 
 # TODO : ajouter docstrings
 
-class DbConnexionManager:
+
+class _DbInspector:
+    # TODO : create an inspector class from scratch ?
+    def __init__(self, engine):
+        self._inspector = inspect(engine)
+
+    def get_columns(self, table_name: str):
+        return self._inspector.get_columns(table_name)
+
+    def get_table_names(self):
+        return self._inspector.get_table_names()
+
+class _DbConnexionManager:
     def __init__(self, user: str, password: str, host: str, database: str):
         self.user = user
         self.password = password
@@ -57,13 +69,12 @@ class DbConnexionManager:
 
 class Database:
     def __init__(self, user: str, password: str, host: str, database: str):
-        self._db_connexion = DbConnexionManager(user, password, host, database)
+        self._db_connexion = _DbConnexionManager(user, password, host, database)
 
     # PROPERTIES
     @property
     def inspector(self):
-        # TODO : create an inspector class from scratch ?
-        return inspect(self._db_connexion.engine)
+        return _DbInspector(self._db_connexion.engine)
 
     # PRIVATE METHODS
     def _execute(self, query: str, params: dict = {}):
