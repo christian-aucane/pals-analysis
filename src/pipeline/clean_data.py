@@ -31,7 +31,7 @@ def clean_combat_attribute(db: Database):
 
     # Replace null with 0
     db.replace_nulls(table_name="combat-attribute", column_name="Riding sprint speed", value=0)
-    db.change_type(table_name="combat-attribute", column_name="Riding sprint speed", new_column_type=int)
+    db.change_type(table_name="combat-attribute", column_name="Riding sprint speed", sql_type="INT")
 
     # Remove EPalGenusCategoryType::
     db.replace_string(table_name="combat-attribute",
@@ -42,12 +42,12 @@ def clean_combat_attribute(db: Database):
     # Remove %, rename with _percent and type INT
     for col in ["(being) damage multiplier", "catch rate", "Experience multiplier"]:
         db.replace_string(table_name="combat-attribute", column_name=col, old_string="%", new_string="")
-        db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"{col}_percent", new_column_type=int)
+        db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"{col}_percent", sql_type="INT")
 
     # Remove end parenthesis, rename with normals characters and type FLOAT
     for col in ["lv1", "lv2", "lv3", "lv4", "lv5"]: # BE CAREFUL ! BAD CHARTERS !  not 'lvl'
         db.strip_right(table_name="combat-attribute", column_name=col, value_to_strip="(")
-        db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"lvl{col[2:]}", new_column_type=float) # Bad characters not 'lvl
+        db.rename_column(table_name="combat-attribute", old_column_name=col, new_column_name=f"lvl{col[2:]}", sql_type="FLOAT") # Bad characters not 'lvl
 
     LOGGER.info("TABLE CLEANED !\n")
 
@@ -57,14 +57,28 @@ def clean_refresh_area(db: Database):
     # Delete columns
     empty_cols = ["Unnamed: 4",
                   "Unnamed: 12"]
-    db.delete_columns(table_name="refresh-area", column_names=empty_cols)
+    useless_cols = [
+        "ID.1",
+        "name.1",
+        "minimum level.1",
+        "maximum level.1",
+        "Pallu refresh type.1",
+        "Night only.1",
+        "refresh area.1",
+        "ID.2",
+        "name.2",
+    ]
+    db.delete_columns(table_name="refresh-area", column_names=empty_cols + useless_cols)
 
+    # Delete empty rows
+    db.delete_rows_with_nulls(table_name="refresh-area", column_name="ID")
+    
     # Type INT
-    for col in ["ID", "minimum level", "maximum level", "ID.2"]:
-        db.change_type(table_name="refresh-area", column_name=col, new_column_type=int)
+    for col in ["ID", "minimum level", "maximum level"]:
+        db.change_type(table_name="refresh-area", column_name=col, sql_type="INT")
 
     # Replace yes null with true and false (BOOL)
-    for col in ["Night only", "Night only.1"]:
+    for col in ["Night only"]:
         db.replace_yes_null(table_name="refresh-area", column_name=col)
 
     LOGGER.info("TABLE CLEANED !\n")
@@ -112,7 +126,7 @@ def clean_hidden_attribute(db: Database):
     # Remove %, rename with _percent and type INT
     for col in ["(being) damage multiplier", "Capture probability"]:
         db.replace_string(table_name="hidden-attribute", column_name=col, old_string="%", new_string="")
-        db.rename_column(table_name="hidden-attribute", old_column_name=col, new_column_name=f"{col}_percent", new_column_type=int)    
+        db.rename_column(table_name="hidden-attribute", old_column_name=col, new_column_name=f"{col}_percent", sql_type="INT")    
 
     LOGGER.info("TABLE CLEANED !\n")
 
@@ -138,7 +152,7 @@ def clean_tower_boss_attribute(db: Database):
                 "BiologicalGrade",
                 "endurance",
                 "fecundity"]:
-        db.change_type(table_name="tower-boss-attribute", column_name=col, new_column_type=int)
+        db.change_type(table_name="tower-boss-attribute", column_name=col, sql_type="INT")
 
     LOGGER.info("TABLE CLEANED !\n")
 
@@ -152,7 +166,7 @@ def clean_ordinary_boss_attribute(db: Database):
 
     # Type INT
     for col in ["HP", "Remote attack"]:
-        db.change_type(table_name="ordinary-boss-attribute", column_name=col, new_column_type=int)
+        db.change_type(table_name="ordinary-boss-attribute", column_name=col, sql_type="INT")
 
     LOGGER.info("TABLE CLEANED !\n")
 
