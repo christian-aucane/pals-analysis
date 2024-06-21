@@ -85,11 +85,18 @@ class Database:
         if column_type is None:
             raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
         return column_type
+    
+    def _generate_select_query(self, table_name, column_names, **kwargs):
+        query = f"SELECT {', '.join(column_names)} FROM `{table_name}`"
+        if "where" in kwargs:
+            query += f" WHERE {kwargs['where']}"
+        if "order_by" in kwargs:
+            query += f" ORDER BY {kwargs['order_by']}"
+        if "limit" in kwargs:
+            query += f" LIMIT {kwargs['limit']}"
+        return query
 
     # PUBLICS METHODS
-    def inspect_columns(self, table_name):
-        return self.inspector.get_columns(table_name)
-    
     def list_columns_names(self, table_name):
         return [col["name"] for col in self.inspector.get_columns(table_name)]
     
@@ -102,10 +109,16 @@ class Database:
     def get_df_from_query(self, query):
         return pd.read_sql(query, self._db_connexion.engine)
 
+    ###############
+
     def delete_columns(self, table_name, column_names):
         query = f"ALTER TABLE `{table_name}` " + ", ".join([f"DROP COLUMN `{col}`" for col in column_names])
         self._execute(query)
-    
+
+    def add_column(self, table_name, column_name, column_type):
+        query = f"ALTER TABLE `{table_name}` ADD `{column_name}` {column_type}"
+        self._execute(query)
+
     def replace_values(self, table_name, column_name, value_to_replace, new_value):
         query = f"UPDATE `{table_name}` SET `{column_name}` = :new_value WHERE `{column_name}` = :value_to_replace"
         params = {"new_value": new_value, "value_to_replace": value_to_replace}
@@ -113,6 +126,12 @@ class Database:
 
     def delete_table(self, table_name):
         self._execute(f"DROP TABLE `{table_name}`")
+
+    def delete_rows(self, table_name, where=""):
+        query = f"DELETE FROM `{table_name}`"
+        if where:
+            query += f" WHERE {where}"
+        self._execute(query)
 
     def strip_left(self, table_name, column_name, value_to_strip):
         query = f"UPDATE `{table_name}` SET `{column_name}` = SUBSTRING(`{column_name}`, LOCATE(:value_to_strip, `{column_name}`) + {len(value_to_strip)})"
@@ -133,26 +152,66 @@ class Database:
         params = {"value": value}
         self._execute(query, params)
 
-    def rename_column(self, table_name, old_column_name, new_column_name, new_column_type: type | None = None):
+    def rename_column(self, table_name, old_column_name, new_column_name, sql_type: str | None = None):
         LOGGER.debug(f"Renaming column '{old_column_name}' in table '{table_name}' to '{new_column_name}'")
-        if new_column_type is not None:
-            sql_type = self._python_to_sql_type(new_column_type)
-        else:
+        if sql_type is None:
             sql_type = self._detect_column_sql_type(table_name, old_column_name)
 
         query = f"ALTER TABLE `{table_name}` CHANGE `{old_column_name}` `{new_column_name}` {sql_type}"
         self._execute(query)
 
-    def change_type(self, table_name, column_name, new_column_type):
-        query = f"ALTER TABLE `{table_name}` MODIFY `{column_name}` {self._python_to_sql_type(new_column_type)}"
+    def change_type(self, table_name, column_name, sql_type):
+        query = f"ALTER TABLE `{table_name}` MODIFY `{column_name}` {sql_type}"
         self._execute(query)
     
     def replace_yes_null(self, table_name, column_name):
         self.replace_nulls(table_name=table_name, column_name=column_name, value=0)
         self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="yes", new_value=1)
-        self.change_type(table_name=table_name, column_name=column_name, new_column_type=bool)
+        self.change_type(table_name=table_name, column_name=column_name, sql_type="BOOL")
 
     def replace_TRUE_FALSE(self, table_name, column_name):
         self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="TRUE", new_value=1)
         self.replace_values(table_name=table_name, column_name=column_name, value_to_replace="FALSE", new_value=0)
-        self.change_type(table_name=table_name, column_name=column_name, new_column_type=bool)
+        self.change_type(table_name=table_name, column_name=column_name, sql_type="BOOL")
+    
+    def create_table_from_select(self, new_table_name, select_table_name, column_names, **kwargs):
+        LOGGER.debug(f"Creating table '{new_table_name}' from '{select_table_name}' with columns '{column_names}'")
+        select_query = self._generate_select_query(table_name=select_table_name, column_names=column_names, **kwargs)
+        query = f"CREATE TABLE IF NOT EXISTS `{new_table_name}` AS {select_query}"
+        self._execute(query)
+
+    def create_column_from_select(self, table_name, column_name, select_table_name, select_column_name, **kwargs):
+        LOGGER.debug(f"Creating column '{column_name}' in table '{table_name}' from '{select_table_name}' with column '{select_column_name}'")
+        select_query = self._generate_select_query(table_name=select_table_name, column_names=[select_column_name], **kwargs)
+        query = f"ALTER TABLE `{table_name}` ADD `{column_name}` AS {select_query}"
+        self._execute(query)
+
+    def create_auto_increment_primary_key_column(self, table_name, column_name):
+        LOGGER.debug(f"Creating auto-increment primary key column '{column_name}' in table '{table_name}'")
+        self.add_column(table_name=table_name, column_name=column_name, column_type="INT AUTO_INCREMENT PRIMARY KEY")
+
+    def drop_table_if_exists(self, table_name):
+        LOGGER.info(f"Dropping table '{table_name}' if it exists")
+        self._execute(f"DROP TABLE IF EXISTS `{table_name}`")
+
+    def add_foreign_key_constraint(self, table_name, column_name, reference_table_name, reference_column_name):
+        query = f"""
+            ALTER TABLE `{table_name}`
+            ADD CONSTRAINT `fk_{table_name}_{reference_table_name}_{column_name}`
+            FOREIGN KEY (`{column_name}`) REFERENCES `{reference_table_name}` (`{reference_column_name}`)
+        """
+        self._execute(query)
+
+    def update_column_from_another_table(self, dest_table_name, dest_column_name, src_table_name, src_column_name, src_join_column, dest_join_column):
+        # Build the SQL query to update dest_table
+        query = f"""
+            UPDATE `{dest_table_name}` AS dest
+            JOIN `{src_table_name}` AS src ON dest.{dest_join_column} = src.{src_join_column}
+            SET dest.{dest_column_name} = src.{src_column_name}
+        """
+        self._execute(query)
+
+    def delete_rows_with_nulls(self, table_name, column_name):
+        query = f"DELETE FROM `{table_name}` WHERE `{column_name}` IS NULL"
+        self._execute(query)
+        
