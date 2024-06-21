@@ -4,6 +4,7 @@ import pandas as pd
 
 from ._inspector import _DbInspector
 from ._connection_manager import _DbConnexionManager
+from ._sql_generator import _SqlGenerator
 
 
 LOGGER = logging.getLogger("DATABASE")
@@ -12,6 +13,8 @@ LOGGER = logging.getLogger("DATABASE")
 
 
 class Database:
+    _sql_generator = _SqlGenerator()
+
     def __init__(self, user: str, password: str, host: str, database: str):
         self._db_connexion = _DbConnexionManager(user, password, host, database)
 
@@ -24,21 +27,8 @@ class Database:
     def _execute(self, query: str, params: dict = {}):
         self._db_connexion.execute(query, params)
 
-    def _generate_select_query(self,
-                               table_name: str,
-                               column_names: list[str],
-                               **kwargs):  # "where", "order_by", "limit"
-        query = f"SELECT {', '.join(column_names)} FROM `{table_name}`"
-        if "where" in kwargs:
-            query += f" WHERE {kwargs['where']}"
-        if "order_by" in kwargs:
-            query += f" ORDER BY {kwargs['order_by']}"
-        if "limit" in kwargs:
-            query += f" LIMIT {kwargs['limit']}"
-        return query
-
     # PUBLICS METHODS
-
+    
     ###########################################################################
     # "Magic" methods :
     ###########################################################################
@@ -68,9 +58,9 @@ class Database:
                                 select_table_name: str,
                                 column_names: list[str],
                                 **kwargs):  # "where", "order_by", "limit"
-        select_query = self._generate_select_query(table_name=select_table_name,
-                                                   column_names=column_names,
-                                                   **kwargs)
+        select_query = self._sql_generator.generate_select(table_name=select_table_name,
+                                                           column_names=column_names,
+                                                           **kwargs)
         query = f"CREATE TABLE IF NOT EXISTS `{new_table_name}` AS {select_query}"
         self._execute(query)
 
@@ -98,9 +88,9 @@ class Database:
                                   select_table_name: str,
                                   select_column_name: str,
                                   **kwargs):  # "where", "order_by", "limit"
-        select_query = self._generate_select_query(table_name=select_table_name,
-                                                   column_names=[select_column_name],
-                                                   **kwargs)
+        select_query = self._sql_generator.generate_select(table_name=select_table_name,
+                                                           column_names=[select_column_name],
+                                                           **kwargs)
         query = f"ALTER TABLE `{table_name}` ADD `{column_name}` AS {select_query}"
         self._execute(query)
 
@@ -169,52 +159,52 @@ class Database:
                        column_name: str,
                        value_to_replace: str,
                        new_value: str):
-        query = f"UPDATE `{table_name}` SET `{column_name}` = :new_value "
-        query += f"WHERE `{column_name}` = :value_to_replace"
-        params = {"new_value": new_value, "value_to_replace": value_to_replace}
-        self._execute(query, params)
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value,
+                                                    where_column_name=column_name,
+                                                    where_value=value_to_replace)
+        self._execute(query)
 
     def strip_left(self,
                    table_name: str,
                    column_name: str,
                    value_to_strip: str):
-        query = f"""
-        UPDATE `{table_name}`
-        SET `{column_name}` = SUBSTRING(`{column_name}`, LOCATE(:value_to_strip, `{column_name}`) + {len(value_to_strip)})
-        """
-        params = {"value_to_strip": value_to_strip}
-        self._execute(query, params)
+        new_value = f"SUBSTRING(`{column_name}`, LOCATE('{value_to_strip}', `{column_name}`) + {len(value_to_strip)})"
+
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
+        self._execute(query)
 
     def strip_right(self,
                     table_name: str,
                     column_name: str,
                     value_to_strip: str):
-        query = f"""
-        UPDATE `{table_name}`
-        SET `{column_name}` = SUBSTRING(`{column_name}`, 1, LENGTH(`{column_name}`) - LOCATE(:value_to_strip, REVERSE(`{column_name}`)) - LENGTH(:value_to_strip) + 1)
-        """
-        params = {"value_to_strip": value_to_strip}
-        self._execute(query, params)
+        new_value = f"SUBSTRING(`{column_name}`, 1, LENGTH(`{column_name}`) - LOCATE('{value_to_strip}', REVERSE(`{column_name}`)) - LENGTH('{value_to_strip}') + 1)"
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
+        self._execute(query)
 
     def replace_string(self,
                        table_name: str,
                        column_name: str,
                        old_string: str,
                        new_string: str):
-        query = f"""
-            UPDATE `{table_name}`
-            SET `{column_name}` = REPLACE(`{column_name}`, '{old_string}', '{new_string}')
-        """
+        new_value = f"REPLACE(`{column_name}`, '{old_string}', '{new_string}')"
+
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
         self._execute(query)
 
     def replace_nulls(self, table_name: str, column_name: str, value: str):
-        query = f"""
-            UPDATE `{table_name}`
-            SET `{column_name}` = :value
-            WHERE `{column_name}` IS NULL
-        """
-        params = {"value": value}
-        self._execute(query, params)
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=value,
+                                                    where_column_name=column_name)
+        self._execute(query)
 
     def replace_yes_null(self, table_name, column_name):
         self.replace_nulls(table_name=table_name,
@@ -284,3 +274,9 @@ class Database:
                                         column_name=column_name,
                                         reference_table_name=reference_table_name,
                                         reference_column_name=reference_column_name)
+
+    def get_df_from_table(self, table_name: str, column_names: str):
+        query = self._sql_generator.generate_select(table_name=table_name,
+                                                   column_names=column_names)
+        return self.get_df_from_query(query)
+    
