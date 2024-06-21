@@ -6,22 +6,15 @@
   - lvl1, lvl2, lvl3, lvl4, lvl5 pas les bons caractères
 
 
-## TODO : 
+## TODO
 - Mettre un lien pour télécharger les données dans Getting Started
 - Scripts install.sh et run.sh
-- etl.py
 
-  - Faire une table pals
-    - ID
-    - English name
-    - Chineise name
-    - Volume size (Size)
-    - Tribe
-    - GenusCategory
-    - Price ?
-
-  - hidden-attribute :
-    - BPClass et Tribe meme chose ?
+- PIPELINE
+  - connecter les tables et suprimer les colonnes redondantes
+    - hidden-attribute
+    - tower-boss-attribute
+    - ordinary-boss-attribute
 
 
 ## Getting started
@@ -55,7 +48,7 @@
 #### Process Pipeline
 - Run process_pipeline script :
   ```shell
-  python src/run_pipeline.py
+  python src/process_pipeline.py
   ```
 
 ### Use
