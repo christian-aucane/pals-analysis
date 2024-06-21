@@ -1,75 +1,30 @@
 import logging
-from functools import reduce
 
 import pandas as pd
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.exc import OperationalError
+
+try:
+    
+    from ._inspector import _DbInspector
+    from ._connection_manager import _DbConnexionManager
+    from ._sql_generator import _SqlGenerator
+    from ._dataframe_manager import _DataframeManager
+except ImportError:
+    from _inspector import _DbInspector
+    from _connection_manager import _DbConnexionManager
+    from _sql_generator import _SqlGenerator
+    from _dataframe_manager import _DataframeManager
 
 LOGGER = logging.getLogger("DATABASE")
 
 # TODO : ajouter docstrings
 
 
-class _DbInspector:
-    # TODO : create an inspector class from scratch ?
-    def __init__(self, engine):
-        self._inspector = inspect(engine)
-
-    def get_columns(self, table_name: str):
-        return self._inspector.get_columns(table_name)
-
-    def get_table_names(self):
-        return self._inspector.get_table_names()
-
-class _DbConnexionManager:
-    def __init__(self, user: str, password: str, host: str, database: str):
-        self.user = user
-        self.password = password
-        self.host = host
-        self.database = database
-        self.engine = None
-        self.connection = None
-        self._connect()
-
-    def __del__(self):
-        self._close()
-
-    # PRIVATE METHODS
-    def _connect(self):
-        LOGGER.info("CONNECTING ...\n")
-        db_uri = f'mysql+pymysql://{self.user}:{self.password}@{self.host}/{self.database}'
-        self.engine = create_engine(db_uri)
-        self.connection = self.engine.connect()
-        self.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
-        self.execute(f"USE {self.database}")
-
-    def _close(self):
-        LOGGER.info("CLOSING CONNECTION ...\n")
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-        if self.engine:
-            self.engine.dispose()
-            self.engine = None
-
-    # PUBLIC METHOD
-    def execute(self, query: str, params: dict = {}):
-        # TODO : add optimization of nb of connections and queries
-        formatted_query = reduce(lambda q, kv: q.replace(f":{kv[0]}",
-                                                         f"'{kv[1]}'"),
-                                                         params.items(),
-                                                         query)
-        LOGGER.debug(f"Executing query : {formatted_query}")
-        try:
-            self.connection.execute(text(query), params)
-            self.connection.commit()
-        except OperationalError as e:
-            LOGGER.error(e)
-
-
 class Database:
+    _sql_generator = _SqlGenerator()
+
     def __init__(self, user: str, password: str, host: str, database: str):
         self._db_connexion = _DbConnexionManager(user, password, host, database)
+        self._dataframe_manager = _DataframeManager(self._db_connexion)
 
     # PROPERTIES
     @property
@@ -80,54 +35,25 @@ class Database:
     def _execute(self, query: str, params: dict = {}):
         self._db_connexion.execute(query, params)
 
-    def _detect_column_sql_type(self, table_name: str, column_name: str):
-        column_info = self.inspector.get_columns(table_name)
-        column_type = None
-
-        for col in column_info:
-            if col["name"] == column_name:
-                column_type = col["type"]
-                break
-        if column_type is None:
-            raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
-        return column_type
-    
-    def _generate_select_query(self,
-                               table_name: str,
-                               column_names: list[str],
-                               **kwargs):  # "where", "order_by", "limit"
-        query = f"SELECT {', '.join(column_names)} FROM `{table_name}`"
-        if "where" in kwargs:
-            query += f" WHERE {kwargs['where']}"
-        if "order_by" in kwargs:
-            query += f" ORDER BY {kwargs['order_by']}"
-        if "limit" in kwargs:
-            query += f" LIMIT {kwargs['limit']}"
-        return query
-
     # PUBLICS METHODS
-
+    
     ###########################################################################
     # "Magic" methods :
     ###########################################################################
-    def list_columns_names(self, table_name: str):
-        return [col["name"] for col in self.inspector.get_columns(table_name)]
-    
-    def list_table_names(self):
-        return self.inspector.get_table_names()
-    
     def load_df_as_table(self,
                          df: pd.DataFrame,
                          table_name: str,
                          if_exists: str = "replace"):  # "fail", "replace", "append"
-        df.to_sql(table_name,
-                  self._db_connexion.engine,
-                  if_exists=if_exists,
-                  index=False)
+        self._dataframe_manager.load_df_as_table(df, table_name, if_exists)
 
-    def get_df_from_query(self, query: str):
-        return pd.read_sql(query, self._db_connexion.engine)
+    def _get_df_from_query(self, query: str):
+        return self._dataframe_manager.get_df_from_query(query)
 
+    def list_table_names(self):
+        return self.inspector.list_table_names()
+
+    def list_columns_names(self, table_name: str):
+        return self.inspector.list_columns_names(table_name=table_name)
     ###########################################################################
     # Tables manipulation :
     ###########################################################################
@@ -136,14 +62,13 @@ class Database:
                                 select_table_name: str,
                                 column_names: list[str],
                                 **kwargs):  # "where", "order_by", "limit"
-        select_query = self._generate_select_query(table_name=select_table_name,
-                                                   column_names=column_names,
-                                                   **kwargs)
+        select_query = self._sql_generator.generate_select(table_name=select_table_name,
+                                                           column_names=column_names,
+                                                           **kwargs)
         query = f"CREATE TABLE IF NOT EXISTS `{new_table_name}` AS {select_query}"
         self._execute(query)
 
-    def delete_table(self, table_name: str, if_exists=True):
-
+    def drop_table(self, table_name: str, if_exists=True):
         query = f"DROP TABLE "
         if if_exists:
             query += "IF EXISTS "
@@ -166,9 +91,9 @@ class Database:
                                   select_table_name: str,
                                   select_column_name: str,
                                   **kwargs):  # "where", "order_by", "limit"
-        select_query = self._generate_select_query(table_name=select_table_name,
-                                                   column_names=[select_column_name],
-                                                   **kwargs)
+        select_query = self._sql_generator.generate_select(table_name=select_table_name,
+                                                           column_names=[select_column_name],
+                                                           **kwargs)
         query = f"ALTER TABLE `{table_name}` ADD `{column_name}` AS {select_query}"
         self._execute(query)
 
@@ -183,8 +108,8 @@ class Database:
                       new_column_name: str,
                       sql_type: str | None = None):
         if sql_type is None:
-            sql_type = self._detect_column_sql_type(table_name=table_name,
-                                                    column_name=old_column_name)
+            sql_type = self.inspector.detect_column_sql_type(table_name=table_name,
+                                                             column_name=old_column_name)
 
         query = f"ALTER TABLE `{table_name}` CHANGE `{old_column_name}` `{new_column_name}` {sql_type}"
         self._execute(query)
@@ -237,52 +162,52 @@ class Database:
                        column_name: str,
                        value_to_replace: str,
                        new_value: str):
-        query = f"UPDATE `{table_name}` SET `{column_name}` = :new_value "
-        query += f"WHERE `{column_name}` = :value_to_replace"
-        params = {"new_value": new_value, "value_to_replace": value_to_replace}
-        self._execute(query, params)
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value,
+                                                    where_column_name=column_name,
+                                                    where_value=value_to_replace)
+        self._execute(query)
 
     def strip_left(self,
                    table_name: str,
                    column_name: str,
                    value_to_strip: str):
-        query = f"""
-        UPDATE `{table_name}`
-        SET `{column_name}` = SUBSTRING(`{column_name}`, LOCATE(:value_to_strip, `{column_name}`) + {len(value_to_strip)})
-        """
-        params = {"value_to_strip": value_to_strip}
-        self._execute(query, params)
+        new_value = f"SUBSTRING(`{column_name}`, LOCATE('{value_to_strip}', `{column_name}`) + {len(value_to_strip)})"
+
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
+        self._execute(query)
 
     def strip_right(self,
                     table_name: str,
                     column_name: str,
                     value_to_strip: str):
-        query = f"""
-        UPDATE `{table_name}`
-        SET `{column_name}` = SUBSTRING(`{column_name}`, 1, LENGTH(`{column_name}`) - LOCATE(:value_to_strip, REVERSE(`{column_name}`)) - LENGTH(:value_to_strip) + 1)
-        """
-        params = {"value_to_strip": value_to_strip}
-        self._execute(query, params)
+        new_value = f"SUBSTRING(`{column_name}`, 1, LENGTH(`{column_name}`) - LOCATE('{value_to_strip}', REVERSE(`{column_name}`)) - LENGTH('{value_to_strip}') + 1)"
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
+        self._execute(query)
 
     def replace_string(self,
                        table_name: str,
                        column_name: str,
                        old_string: str,
                        new_string: str):
-        query = f"""
-            UPDATE `{table_name}`
-            SET `{column_name}` = REPLACE(`{column_name}`, '{old_string}', '{new_string}')
-        """
+        new_value = f"REPLACE(`{column_name}`, '{old_string}', '{new_string}')"
+
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=new_value)
         self._execute(query)
 
     def replace_nulls(self, table_name: str, column_name: str, value: str):
-        query = f"""
-            UPDATE `{table_name}`
-            SET `{column_name}` = :value
-            WHERE `{column_name}` IS NULL
-        """
-        params = {"value": value}
-        self._execute(query, params)
+        query = self._sql_generator.generate_update(table_name=table_name,
+                                                    column_name=column_name,
+                                                    value=value,
+                                                    where_column_name=column_name)
+        self._execute(query)
 
     def replace_yes_null(self, table_name, column_name):
         self.replace_nulls(table_name=table_name,
@@ -352,3 +277,41 @@ class Database:
                                         column_name=column_name,
                                         reference_table_name=reference_table_name,
                                         reference_column_name=reference_column_name)
+
+    ###########################################################################
+    # Data reading
+    ###########################################################################
+
+    def get_df_from_select(self, table_name: str, columns_names: list[str]):
+        query = self._sql_generator.generate_select(table_name=table_name,
+                                                    columns_names=columns_names)
+        print("columns names : ", columns_names)
+        print(f"Query : {query}")
+        return self._get_df_from_query(query)
+    
+    def get_df_from_join(self,
+                         left_table_name: str,
+                         left_ref_col: str,
+                         right_table_name: str,
+                         right_ref_col: str,
+                         columns_names: tuple[list[str]] | None = None):
+        query = self._sql_generator.generate_select_join(left_table_name=left_table_name,
+                                                         left_ref_col=left_ref_col,
+                                                         right_table_name=right_table_name,
+                                                         right_ref_col=right_ref_col,
+                                                         columns_names=columns_names)
+        print("columns names : ", columns_names)
+        print(f"Query : {query}")
+        return self._get_df_from_query(query)
+    
+
+if __name__ == "__main__":
+    db = Database(user="root", password="root", host="localhost", database="palworld_database")
+
+    # print(db.get_df_from_select(table_name="pals", columns_names=["pal_id", "name"]))
+
+    print(db.get_df_from_join(left_table_name="pals",
+                              left_ref_col="unique_id",
+                              right_table_name="combat-attribute",
+                              right_ref_col="unique_id",
+                              columns_names=(["pal_id", "name"], ["lvl_1"])))
