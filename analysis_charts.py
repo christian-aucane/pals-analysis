@@ -11,7 +11,7 @@ import tkinter as tk
 
 
 
-# read the data from the csv file or mysql database
+# read the data from the csv file or my
     # ! Change the path to the csv file when data are cleaned, actually it's the raw data !
 pals_attributes = pd.read_csv('raw_data/Palworld_Data--Palu combat attribute table.csv', skiprows=1, delimiter=',')
 pals_attributes.columns = pals_attributes.columns.str.replace(' ', '_')
