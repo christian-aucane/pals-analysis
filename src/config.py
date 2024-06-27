@@ -4,7 +4,7 @@ import logging
 # TODO : move db config in .env and read it
 DB_CONFIG = {
     "user": "root",
-    "password": "root",
+    "password": "leo",
     "host": "localhost",
     "database": "palworld_database",
 }
