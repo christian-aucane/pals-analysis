@@ -34,9 +34,18 @@ def display_app() -> None:
                   'plot_hp_combat_attribute_relationships',
                   'plot_hp_combat_attribute_correlation',
                   'rarity_distribution_pie',
-                  'plot_rarity_vs_attributes']
+                  'plot_rarity_vs_attributes',
+                  'alimentary_distribution_pie',
+                  'alimentary_distribution_bar',
+                  'plot_combat_power_distribution',
+                  'plot_top10_pals',
+                  'plot_avg_rarity_of_high_attack_pals',
+                  'plot_size_vs_performance',
+                  'plot_size_vs_performance_correlation',
+                  'plot_speed_vs_performance',
+                  'plot_speed_vs_performance_correlation']
     st.sidebar.title("Title")
-    selected_box = st.sidebar.selectbox("Select Box", select_box)
+    selected_box = st.sidebar.selectbox("Select chart", select_box)
     charts = {'distribution_pie':  volume_size_distribution_pie,
               'distribution_genus_bar': volume_size_distribution_genus_bar,
               'distribution_rarity_bar': volume_size_distribution_rarity_bar,
@@ -51,7 +60,16 @@ def display_app() -> None:
               'plot_hp_combat_attribute_relationships': plot_hp_combat_attribute_relationships,
               'plot_hp_combat_attribute_correlation': plot_hp_combat_attribute_correlation,
               'rarity_distribution_pie': rarity_distribution_pie,
-              'plot_rarity_vs_attributes': plot_rarity_vs_attributes}
+              'plot_rarity_vs_attributes': plot_rarity_vs_attributes,
+              'alimentary_distribution_pie': alimentary_distribution_pie,
+              'alimentary_distribution_bar': alimentary_distribution_bar,
+              'plot_combat_power_distribution': plot_combat_power_distribution,
+              'plot_top10_pals': plot_top10_pals,
+              'plot_avg_rarity_of_high_attack_pals': plot_avg_rarity_of_high_attack_pals,
+              'plot_size_vs_performance': plot_size_vs_performance,
+              'plot_size_vs_performance_correlation': plot_size_vs_performance_correlation,
+              'plot_speed_vs_performance': plot_speed_vs_performance,
+              'plot_speed_vs_performance_correlation': plot_speed_vs_performance_correlation}
     if selected_box:
         charts[selected_box]()
 

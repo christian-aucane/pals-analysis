@@ -712,8 +712,321 @@ def plot_rarity_vs_attributes():
     # Display the plot with Streamlit
     st.pyplot(fig)
 
+def alimentary_distribution_pie():
+    # Importing the dataset
+    dataset = db.get_df_from_select(table_name="job-skill", columns_names=["food_intake"])
 
+    # Extracting food_intake from the dataset
+    food_intake = dataset["food_intake"]
 
+    # Counting the number of pals for each food intake value
+    food_intake_counts = food_intake.value_counts().sort_index()
 
+    # Defining color gradient for food intake
+    cmap = plt.get_cmap('RdYlGn_r')  # 'RdYlGn_r' is a colormap that goes from red to green
+    colors = [cmap(i) for i in np.linspace(0, 1, len(food_intake_counts))]
 
+    # Creating a larger figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Creating the pie chart
+    wedges, texts, autotexts = ax.pie(food_intake_counts, labels=food_intake_counts.index, autopct='%1.1f%%', startangle=90, colors=colors)
+
+    # Adding a color bar
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=1, vmax=9))
+    fig.colorbar(sm, ax=ax, orientation='vertical', label='Food Intake (1=Low, 9=High)', pad=0.02)
+
+    plt.title('Percentage Distribution of Pals by Food Intake')
+    
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+def alimentary_distribution_bar():
+    # Importing the dataset
+    dataset = db.get_df_from_select(table_name="job-skill", columns_names=["food_intake"])
+
+    # Extracting food_intake from the dataset
+    food_intake = dataset["food_intake"]
+
+    # Counting the number of pals for each food intake value
+    food_intake_counts = food_intake.value_counts().sort_index()
+
+    # Defining color gradient for food intake
+    cmap = plt.get_cmap('RdYlGn_r')  # 'RdYlGn_r' is a colormap that goes from red to green
+    colors = [cmap(i) for i in np.linspace(0, 1, len(food_intake_counts))]
+
+    # Creating a larger figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Creating the bar plot
+    bars = ax.bar(food_intake_counts.index, food_intake_counts, color=colors, edgecolor='black', width=0.5)
+
+    # Adding the text above each bar
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.05, yval, ha='center', va='bottom')
+
+    # Adding a color bar
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=1, vmax=9))
+    fig.colorbar(sm, ax=ax, orientation='vertical', label='Food Intake (1=Low, 9=High)', pad=0.02)
+
+    plt.title('Distribution of Number of Pals by Food Intake')
+    plt.xlabel('Food Intake')
+    plt.ylabel('Number of Pals')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot the fighting power distribution of pals into a pie chart
+def plot_combat_power_distribution():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["hp", "melee_attack", "remote_attack", "defense", "support"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset.sum(axis=1)
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Create a histogram of the combat power distribution
+    n, bins, patches = ax.hist(dataset['combat_power'], bins=30, edgecolor='black')
+
+    # Add the actual values above each bar
+    for i in range(len(patches)):
+        ax.text(patches[i].get_x() + patches[i].get_width()/2., n[i], str(int(n[i])), ha='center')
+
+    # Create a color gradient from green to red based on combat power
+    fracs = bins[:-1] / bins[:-1].max()
+    norm = mcolors.Normalize(fracs.min(), fracs.max())
+
+    for thisfrac, thispatch in zip(fracs, patches):
+        color = plt.cm.RdYlGn(norm(thisfrac))
+        thispatch.set_facecolor(color)
+
+    # Add combat power formula
+    combat_power_formula = "Combat Power = hp + melee_attack + remote_attack + defense + support"
+    fig.text(0.5, 0.01, combat_power_formula, wrap=True, horizontalalignment='center', fontsize=12)
+
+    plt.title('Distribution of pals\' combat power')
+    plt.xlabel('Combat Power')
+    plt.ylabel('Number of pals')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot the top 10 strongest pals in a horizontal stacked bar chart
+def plot_top10_pals():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["name", "hp", "melee_attack", "remote_attack", "defense", "support"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset[["hp", "melee_attack", "remote_attack", "defense", "support"]].sum(axis=1)
+
+    # Sort the dataset by combat power and take the top 10
+    top10_pals = dataset.sort_values(by='combat_power', ascending=True).tail(10)
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Create a horizontal stacked bar chart
+    top10_pals.set_index('name')[["hp", "melee_attack", "remote_attack", "defense", "support"]].plot(kind='barh', stacked=True, 
+        color={"hp": "red", "melee_attack": "lime", "remote_attack": "orange", "defense": "tan", "support": "green"}, ax=ax)
+
+    # Add the values for each attribute in the bars
+    for p in ax.patches:
+        width, height = p.get_width(), p.get_height()
+        x, y = p.get_xy() 
+        ax.text(x+width/2, 
+                y+height/2, 
+                '{:.0f}'.format(width), 
+                horizontalalignment='center', 
+                verticalalignment='center')
+
+    # Move the legend to the right side of the plot
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.title('Top 10 Strongest Pals')
+    plt.xlabel('Combat Power')
+    plt.ylabel('Pal Name')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot the average rarity of pals with the highest attack power
+def plot_avg_rarity_of_high_attack_pals():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["rarity", "melee_attack", "remote_attack"])
+
+    # Convert rarity numbers to categories
+    rarity_categories = []
+    for r in dataset['rarity']:
+        if 1 <= r <= 4:
+            rarity_categories.append('common')
+        elif 5 <= r <= 7:
+            rarity_categories.append('rare')
+        elif 8 <= r <= 10:
+            rarity_categories.append('epic')
+        else:  # r > 10
+            rarity_categories.append('legendary')
+
+    # Adding the rarity categories to the dataset
+    dataset['rarity_category'] = rarity_categories
+
+    # Group by rarity category and calculate average melee attack and average remote attack
+    avg_melee_attack_by_rarity = dataset.groupby('rarity_category')['melee_attack'].mean()
+    avg_remote_attack_by_rarity = dataset.groupby('rarity_category')['remote_attack'].mean()
+
+    # Order the data by rarity category
+    ordered_categories = ['common', 'rare', 'epic', 'legendary']
+    avg_melee_attack_by_rarity = avg_melee_attack_by_rarity.reindex(ordered_categories)
+    avg_remote_attack_by_rarity = avg_remote_attack_by_rarity.reindex(ordered_categories)
+
+    # Define colors for each rarity category in valid Matplotlib format
+    rarity_colors = ['gray', 'blue', 'purple', '#FF8C00']  # Modify these colors as needed
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Plotting bars
+    ax.bar(ordered_categories, avg_melee_attack_by_rarity, color=rarity_colors, label='Average Melee Attack')
+    ax.bar(ordered_categories, avg_remote_attack_by_rarity, bottom=avg_melee_attack_by_rarity, color=[0.5, 0.5, 0.5], label='Average Remote Attack')
+
+    ax.set_title('Average Rarity of Pals with Highest Attack Power')
+    ax.set_ylabel('Average Attack Power')
+    ax.legend()
+
+    # Add annotation
+    ax.text(1.5, -25, "Note: The average attack power is calculated as the mean of melee attack and remote attack for each rarity category.", ha="center", fontsize=8, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+
+    # Change x-axis labels color
+    ax.set_xticks(range(len(ordered_categories)))
+    ax.set_xticklabels(ordered_categories, color='black')  # Change 'black' to desired color
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot pal size vs combat performance
+def plot_size_vs_performance():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["name", "hp", "melee_attack", "remote_attack", "defense", "support", "volume_size"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset[["hp", "melee_attack", "remote_attack", "defense", "support"]].sum(axis=1)
+
+    # Define the order
+    size_order = ['XS', 'S', 'M', 'L', 'XL']
+
+    # Convert 'volume_size' to a categorical type with the specified order
+    dataset['volume_size'] = pd.Categorical(dataset['volume_size'], categories=size_order, ordered=True)
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Create a scatter plot
+    ax.scatter(dataset['volume_size'], dataset['combat_power'])
+
+    ax.set_title('Pal Size vs Combat Performance')
+    ax.set_xlabel('Size')
+    ax.set_ylabel('Combat Power')
+
+    # Add an annotation
+    fig.text(0.5, -0.15, 'Combat performance is calculated as the sum of hp, melee_attack, remote_attack, defense, and support.',
+             ha='center', fontsize=10, bbox={'facecolor': 'wheat', 'alpha': 0.5, 'pad': 5})
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot pal size vs combat performance
+def plot_size_vs_performance_correlation():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["name", "hp", "melee_attack", "remote_attack", "defense", "support", "volume_size"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset[["hp", "melee_attack", "remote_attack", "defense", "support"]].sum(axis=1)
+
+    # Define the order
+    size_order = ['XS', 'S', 'M', 'L', 'XL']
+
+    # Convert 'volume_size' to a categorical type with the specified order
+    dataset['volume_size'] = pd.Categorical(dataset['volume_size'], categories=size_order, ordered=True)
+
+    # Convert 'volume_size' to numerical values for correlation calculation
+    dataset['volume_size_num'] = dataset['volume_size'].cat.codes
+
+    # Calculate the correlation matrix
+    correlation_matrix = dataset[['volume_size_num', 'combat_power']].corr()
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Create a heatmap
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', ax=ax)
+
+    ax.set_title('Correlation between Pal Size and Combat Performance')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot the average speed of pals vs combat performance
+def plot_speed_vs_performance():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["name", "hp", "melee_attack", "remote_attack", "defense", "support", "volume_size", "slow_walking_speed", "walking_speed", "running_speed"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset[["hp", "melee_attack", "remote_attack", "defense", "support"]].sum(axis=1)
+
+    # Calculate average speed
+    dataset['average_speed'] = dataset[["slow_walking_speed", "walking_speed", "running_speed"]].mean(axis=1)
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Create a scatter plot
+    ax.scatter(dataset['average_speed'], dataset['combat_power'])
+
+    ax.set_title('Average Speed of Pals vs Combat Performance')
+    ax.set_xlabel('Average Speed of Pals')
+    ax.set_ylabel('Combat Performance')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
+
+# Function to plot the correlation between average speed and combat performance
+def plot_speed_vs_performance_correlation():
+
+    # Replace this with your actual database retrieval logic
+    # Import the dataset
+    dataset = db.get_df_from_select(table_name="pals", columns_names=["name", "hp", "melee_attack", "remote_attack", "defense", "support", "volume_size", "slow_walking_speed", "walking_speed", "running_speed"])
+
+    # Calculate combat power
+    dataset['combat_power'] = dataset[["hp", "melee_attack", "remote_attack", "defense", "support"]].sum(axis=1)
+
+    # Calculate average speed
+    dataset['average_speed'] = dataset[["slow_walking_speed", "walking_speed", "running_speed"]].mean(axis=1)
+
+    # Calculate the correlation matrix
+    correlation_matrix = dataset[['average_speed', 'combat_power']].corr()
+
+    # Create a larger figure
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Create a heatmap
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', ax=ax)
+
+    ax.set_title('Correlation between Average Speed and Combat Performance')
+
+    # Display the plot with Streamlit
+    st.pyplot(fig)
 
