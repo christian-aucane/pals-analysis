@@ -26,7 +26,15 @@ def display_app() -> None:
                   'genus_category_distribution_pie',
                   'genus_category_distribution_rarity_bar',
                   'genus_category_distribution_single_element_bar',
-                  'genus_category_distribution_double_element_combined_bar']
+                  'genus_category_distribution_double_element_combined_bar',
+                  'hp_distribution_pie',
+                  'hp_distribution_bar',
+                  'hp_rarity_distribution_bar',
+                  'hp_genus_distribution_bar',
+                  'plot_hp_combat_attribute_relationships',
+                  'plot_hp_combat_attribute_correlation',
+                  'rarity_distribution_pie',
+                  'plot_rarity_vs_attributes']
     st.sidebar.title("Title")
     selected_box = st.sidebar.selectbox("Select Box", select_box)
     charts = {'distribution_pie':  volume_size_distribution_pie,
@@ -35,7 +43,15 @@ def display_app() -> None:
               'genus_category_distribution_pie': genus_category_distribution_pie,
               'genus_category_distribution_rarity_bar': genus_category_distribution_rarity_bar,
               'genus_category_distribution_single_element_bar': genus_category_distribution_single_element_bar,
-              'genus_category_distribution_double_element_combined_bar': genus_category_distribution_double_element_combined_bar}
+              'genus_category_distribution_double_element_combined_bar': genus_category_distribution_double_element_combined_bar,
+              'hp_distribution_pie': hp_distribution_pie,
+              'hp_distribution_bar': hp_distribution_bar,
+              'hp_rarity_distribution_bar': hp_rarity_distribution_bar,
+              'hp_genus_distribution_bar': hp_genus_distribution_bar,
+              'plot_hp_combat_attribute_relationships': plot_hp_combat_attribute_relationships,
+              'plot_hp_combat_attribute_correlation': plot_hp_combat_attribute_correlation,
+              'rarity_distribution_pie': rarity_distribution_pie,
+              'plot_rarity_vs_attributes': plot_rarity_vs_attributes}
     if selected_box:
         charts[selected_box]()
 
